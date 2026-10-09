@@ -1,0 +1,28 @@
+{
+  "name": "navincr",
+  "version": "1.0.0",
+  "description": "Delhi NCR Multi-Modal Transit Routing Engine - Node.js Middleware",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "extract": "python scripts/extract_graph.py",
+    "build-engine": "cd core && g++ -O2 -std=c++17 -o engine engine.cpp -I. && echo Engine compiled successfully!"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "axios": "^1.6.0"
+  },
+  "keywords": [
+    "delhi",
+    "ncr",
+    "transit",
+    "routing",
+    "multimodal"
+  ],
+  "author": "bhavesh",
+  "license": "MIT",
+  "devDependencies": {},
+  "type": "commonjs"
+}

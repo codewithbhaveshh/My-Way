@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+navincr/node_modules/
+
+# Environment variables
+.env
+*.env.local
+
+# Build artifacts and binaries
+*.exe
+*.o
+*.obj
+build/
+
+# Cache
+navincr/scripts/cache/
+__pycache__/
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*

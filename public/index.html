@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NaviNCR — C++ Multi-Modal Transit Engine</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            background-color: #0d0f12;
+            color: #f3f4f6;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background: #090a0f;
+        }
+
+        .hud-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(18, 21, 28, 0.88);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 18px 20px;
+            width: 320px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand-title {
+            font-size: 17px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ffffff;
+        }
+
+        .brand-badge {
+            font-size: 10px;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 2px 7px;
+            border-radius: 6px;
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            text-transform: uppercase;
+        }
+
+        .instruction-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 12.5px;
+            color: #9ca3af;
+            line-height: 1.45;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .step-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 10px #10b981;
+            flex-shrink: 0;
+        }
+
+        .step-dot.end {
+            background: #f43f5e;
+            box-shadow: 0 0 10px #f43f5e;
+        }
+
+        .route-stats {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.02);
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding-top: 12px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-size: 13.5px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: #f9fafb;
+        }
+
+        .stat-value.highlight {
+            color: #34d399;
+        }
+
+        .btn-reset {
+            width: 100%;
+            padding: 9px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            color: #d1d5db;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .btn-reset:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .custom-pin {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: 700;
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.6);
+            border: 2px solid #ffffff;
+        }
+
+        .pin-start {
+            background: #10b981;
+            box-shadow: 0 0 16px rgba(16, 185, 129, 0.8);
+        }
+
+        .pin-end {
+            background: #f43f5e;
+            box-shadow: 0 0 16px rgba(244, 63, 94, 0.8);
+        }
+
+        .leaflet-bar a {
+            background-color: #12151c !important;
+            color: #e5e7eb !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .leaflet-bar a:hover {
+            background-color: #1c212b !important;
+            color: #ffffff !important;
+        }
+
+        .leaflet-control-attribution {
+            background: rgba(9, 10, 15, 0.75) !important;
+            color: #6b7280 !important;
+            font-size: 10px !important;
+        }
+
+        .leaflet-control-attribution a {
+            color: #9ca3af !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div class="hud-panel">
+        <div class="brand">
+            <div class="brand-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+                </svg>
+                NaviNCR
+            </div>
+            <span class="brand-badge">C++ Engine</span>
+        </div>
+
+        <div class="instruction-card" id="instructionText">
+            <div class="step-dot" id="stepIndicator"></div>
+            <span id="instructionMsg">Click anywhere to place <strong>Start</strong> point</span>
+        </div>
+
+        <div class="route-stats" id="routeStats">
+            <div class="stat-row">
+                <span class="stat-label">Estimated Time</span>
+                <span class="stat-value highlight" id="statTime">--</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Route Segments</span>
+                <span class="stat-value" id="statLegs">--</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Mode / Fare</span>
+                <span class="stat-value" id="statFare">Road / ₹0</span>
+            </div>
+        </div>
+
+        <button class="btn-reset" id="resetBtn" onclick="resetRoute()">Clear Route</button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Bounding box for our extracted Delhi spatial graph
+        const southWest = L.latLng(28.5000, 77.1000);
+        const northEast = L.latLng(28.6800, 77.2800);
+        const bounds = L.latLngBounds(southWest, northEast);
+
+        const map = L.map('map', {
+            zoomControl: false,
+            minZoom: 12,
+            maxZoom: 18,
+            maxBounds: bounds,
+            maxBoundsViscosity: 1.0
+        }).setView([28.5800, 77.2000], 13);
+
+        // Fit view tightly to the active zone
+        map.fitBounds(bounds);
+
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+            maxZoom: 16
+        }).addTo(map);
+
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '',
+            maxZoom: 16
+        }).addTo(map);
+
+        let startPoint = null;
+        let endPoint = null;
+        let startMarker = null;
+        let endMarker = null;
+        let routeLayer = null;
+
+        const instructionMsg = document.getElementById('instructionMsg');
+        const stepIndicator = document.getElementById('stepIndicator');
+        const routeStats = document.getElementById('routeStats');
+        const statTime = document.getElementById('statTime');
+        const statLegs = document.getElementById('statLegs');
+
+        function createPinIcon(label, className) {
+            return L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div class="custom-pin ${className}">${label}</div>`,
+                iconSize: [26, 26],
+                iconAnchor: [13, 13]
+            });
+        }
+
+        map.on('click', function(e) {
+            const { lat, lng } = e.latlng;
+
+            if (!startPoint) {
+                startPoint = { lat, lng };
+                startMarker = L.marker([lat, lng], {
+                    icon: createPinIcon('A', 'pin-start')
+                }).addTo(map);
+
+                stepIndicator.className = 'step-dot end';
+                instructionMsg.innerHTML = 'Now click to place <strong>Destination</strong>';
+            } else if (!endPoint) {
+                endPoint = { lat, lng };
+                endMarker = L.marker([lat, lng], {
+                    icon: createPinIcon('B', 'pin-end')
+                }).addTo(map);
+
+                instructionMsg.innerHTML = 'Computing Pareto path in C++...';
+                stepIndicator.style.background = '#eab308';
+                stepIndicator.style.boxShadow = '0 0 10px #eab308';
+
+                fetchRoute(startPoint, endPoint);
+            }
+        });
+
+        async function fetchRoute(start, end) {
+            try {
+                const url = `/api/route?startLat=${start.lat}&startLon=${start.lng}&endLat=${end.lat}&endLon=${end.lng}`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+                const data = await res.json();
+
+                if (!data.routes || data.routes.length === 0) {
+                    instructionMsg.innerHTML = '<span style="color:#f87171">No path found between points</span>';
+                    return;
+                }
+
+                const bestRoute = data.routes[0];
+                const polylineCoords = [];
+
+                if (bestRoute.legs && bestRoute.legs.length > 0) {
+                    bestRoute.legs.forEach(leg => {
+                        if (leg.path) {
+                            leg.path.forEach(pt => polylineCoords.push(pt));
+                        }
+                    });
+                }
+
+                if (polylineCoords.length > 0) {
+                    if (routeLayer) map.removeLayer(routeLayer);
+
+                    // Dual polyline for glowing neon effect
+                    const glowLayer = L.polyline(polylineCoords, {
+                        color: '#10b981',
+                        weight: 8,
+                        opacity: 0.35,
+                        lineCap: 'round',
+                        lineJoin: 'round'
+                    });
+
+                    const mainLayer = L.polyline(polylineCoords, {
+                        color: '#34d399',
+                        weight: 4,
+                        opacity: 0.95,
+                        lineCap: 'round',
+                        lineJoin: 'round'
+                    });
+
+                    routeLayer = L.layerGroup([glowLayer, mainLayer]).addTo(map);
+                    map.fitBounds(mainLayer.getBounds(), { padding: [60, 60] });
+
+                    statTime.innerText = `${bestRoute.totalDurationMin.toFixed(1)} min`;
+                    statLegs.innerText = `${bestRoute.legs.length} legs`;
+                    routeStats.style.display = 'flex';
+
+                    stepIndicator.className = 'step-dot';
+                    stepIndicator.style.background = '#10b981';
+                    stepIndicator.style.boxShadow = '0 0 10px #10b981';
+                    instructionMsg.innerHTML = 'Route computed via <strong>Pareto Engine</strong>';
+                }
+            } catch (err) {
+                console.error(err);
+                instructionMsg.innerHTML = '<span style="color:#f87171">Error calculating route</span>';
+            }
+        }
+
+        function resetRoute() {
+            if (startMarker) map.removeLayer(startMarker);
+            if (endMarker) map.removeLayer(endMarker);
+            if (routeLayer) map.removeLayer(routeLayer);
+
+            startPoint = null;
+            endPoint = null;
+            startMarker = null;
+            endMarker = null;
+            routeLayer = null;
+
+            stepIndicator.className = 'step-dot';
+            stepIndicator.style.background = '#10b981';
+            stepIndicator.style.boxShadow = '0 0 10px #10b981';
+            instructionMsg.innerHTML = 'Click anywhere to place <strong>Start</strong> point';
+            routeStats.style.display = 'none';
+            map.fitBounds(bounds);
+        }
+    </script>
+</body>
+</html>
